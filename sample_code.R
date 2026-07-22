@@ -6,7 +6,7 @@
 # O QUE ESTE SCRIPT FAZ
 # Usa uma pergunta do survey (Q14_1: "O(a) senhor(a) concorda ou
 # discorda que, para aumentar sua influência no mundo, o Brasil
-# utilize o poder brics?") para mostrar o caminho completo de uma
+# utilize o poder militar?") para mostrar o caminho completo de uma
 # análise: carregar dados -> limpar -> calcular frequências -> plotar.
 #
 # Esse mesmo caminho (limpar -> contar -> %  -> gráfico) é o que
@@ -49,7 +49,7 @@ df <- read.csv("survey2023_v3.csv")
 ## PASSO 3 — Limpar e recodificar a variável de interesse --------------------
 #
 # Vamos transformar Q14_1 (nome técnico da pergunta sobre poder
-# brics) em uma variável chamada "brics", em três sub-passos:
+# militar) em uma variável chamada "militar", em três sub-passos:
 #
 #   3a) renomear a coluna para um nome que faça sentido;
 #   3b) remover entrevistas sem "id" (questionários inválidos/vazios);
@@ -60,22 +60,22 @@ df <- read.csv("survey2023_v3.csv")
 #       código (número), cada uma útil para um tipo de análise.
 
 df <- df %>%
-  rename(brics = Q19b) %>%
+  rename(militar = Q14_1) %>%
   filter(!is.na(id)) %>%
   mutate(
     # 3c) "90 | NS" e "99 | NR" viram NA (ausência de resposta válida)
-    brics = ifelse(brics %in% c("90 | NS", "99 | NR", "90 | NR"), NA, brics),
+    militar = ifelse(militar %in% c("90 | NS", "99 | NR", "90 | NR"), NA, militar),
 
     # 3d-i) versão em TEXTO: remove o código e o " | ", sobra só o rótulo
     #   ex.: "1 | Concordo totalmente" -> "Concordo totalmente"
-    brics_char = gsub("[^[:alpha:] ] ", "", as.character(brics)),
+    militar_char = gsub("[^[:alpha:] ] ", "", as.character(militar)),
 
     # 3d-ii) versão NUMÉRICA: extrai só os dígitos do código e
     #   subtrai 1 para a escala começar em 0 (útil em alguns modelos
     #   estatísticos). Fica como factor porque, aqui, o número
     #   representa uma categoria (escala Likert), não uma quantidade.
-    brics_n = as.factor(
-      as.numeric(gsub("[^0-9]", "", as.character(brics))) - 1
+    militar_n = as.factor(
+      as.numeric(gsub("[^0-9]", "", as.character(militar))) - 1
     )
   )
 
@@ -88,13 +88,10 @@ df <- df %>%
 # total) para que o eixo do gráfico siga essa lógica.
 
 nivel_concordancia <- c(
-  "Concordo totalmente",
-  "Concordo em parte",
-  "Discordo em parte",
   "Discordo totalmente",
-  "NS",
-  "NR",
-  "Nem concordo nem discordo (ESPONTÂNEA)"
+  "Discordo em parte",
+  "Concordo em parte",
+  "Concordo totalmente"
 )
 
 
@@ -110,12 +107,12 @@ n_total <- nrow(df)
 df_resumo <- df %>%
   # 5a) remove quem respondeu "Nem concordo nem discordo (espontânea)"
   #     e quem ficou como NA — queremos só as 4 categorias da escala
-  filter(!brics_char %in% c(NA, "Nem concordo nem discordo(ESPONTÂNEA)")) %>%
+  filter(!militar_char %in% c(NA, "Nem concordo nem discordo(ESPONTÂNEA)")) %>%
   # 5b) transforma o texto em fator já na ordem lógica do Passo 4 —
   #     é isso que garante que o gráfico saia na ordem certa
-  mutate(brics_char = factor(brics_char, levels = nivel_concordancia)) %>%
+  mutate(militar_char = factor(militar_char, levels = nivel_concordancia)) %>%
   # 5c) conta quantas respostas caem em cada categoria
-  group_by(brics_char) %>%
+  group_by(militar_char) %>%
   summarise(n = n(), .groups = "drop") %>%
   # 5d) calcula o percentual de cada categoria sobre o total da amostra
   mutate(pct = n / n_total)
@@ -135,24 +132,17 @@ df_resumo <- df %>%
 #                          cada barra
 
 df_resumo %>%
-  ggplot(aes(x = brics_char, y = n)) +
+  ggplot(aes(x = militar_char, y = n)) +
   geom_bar(stat = "identity") +
   theme_datamundi(base_size = 20) + # base_size determina o tamanho das letras em geral
   labs(
-    x = "Os BRICS são uma aliança constrangedora, com países  autoritários como a Rússia e a China, ou que apresentam altos níveis de exclusão social como a Índia e a África do Sul.",
+    x = "Opinião sobre o uso do poder militar como ferramenta de influência internacional",
     y = "Número de respondentes"
   ) +
   geom_text(
     aes(label = paste0(round(pct * 100, 2), "%")),
     vjust = 1.5, size = 8, color = "white"
   )
-
-ggsave(
-  filename = "Opinião sobre BRICS_b.png", 
-  width = 8,                          
-  height = 4,                          
-  units = "in",                        
-  dpi = 300)
 
 # ══════════════════════════════════════════════════════════════════
 # PARA REPLICAR COM OUTRA PERGUNTA:
